@@ -1,0 +1,208 @@
+<mxfile host="app.diagrams.net" modified="2024-01-01T00:00:00.000Z" agent="Mozilla/5.0" version="22.1.0" type="device">
+  <diagram name="Async Notification Flow" id="async-notification-flow">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="ASYNC NOTIFICATION FLOW (Q2)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="20" width="400" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="subtitle" value="How notifications are processed asynchronously via RabbitMQ" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="350" y="55" width="500" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Swimlanes -->
+        <mxCell id="swimCustomer" value="CUSTOMER" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;startSize=30;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="1300" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swimApp" value="APPLICATION" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;startSize=30;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="230" width="1300" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swimQueue" value="MESSAGE QUEUE" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;startSize=30;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="410" width="1300" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swimWorker" value="BACKGROUND WORKER" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;startSize=30;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="540" width="1300" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swimExternal" value="EXTERNAL" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;startSize=30;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="1300" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Customer swimlane content -->
+        <mxCell id="custPlaceOrder" value="Place&#xa;Order" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="140" width="80" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="custResponse" value="Receive&#xa;Response&#xa;(fast!)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="140" width="80" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="custPush" value="Receive Push&#xa;Notification&#xa;(async)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="140" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Application swimlane content -->
+        <mxCell id="appReceive" value="1. Receive&#xa;   Request" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="100" y="280" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="appSaveDB" value="2. Save to&#xa;   Database" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="220" y="280" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="appPublish" value="3. Publish&#xa;   Event to&#xa;   Queue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="340" y="280" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="appReturn" value="4. Return&#xa;   Response" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="280" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Note about timing -->
+        <mxCell id="timeNote" value="~50ms total" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#009900" vertex="1" parent="1">
+          <mxGeometry x="250" y="350" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="timeNote2" value="vs ~500ms in Q1&#xa;(sync notifications)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="250" y="370" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Queue swimlane content -->
+        <mxCell id="queueExchange" value="notifications&#xa;exchange" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="330" y="450" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="queueCustomer" value="customer_&#xa;notifications&#xa;queue" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;size=20;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="520" y="440" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="queueRestaurant" value="restaurant_&#xa;notifications&#xa;queue" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;size=20;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="520" y="505" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Worker swimlane content -->
+        <mxCell id="workerConsume" value="5. Consume&#xa;   Message" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="700" y="590" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="workerProcess" value="6. Process&#xa;   Event" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="590" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="workerSendPush" value="7. Send Push&#xa;   Notification" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="940" y="590" width="90" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="workerAck" value="8. Acknowledge&#xa;   Message" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="590" width="90" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- External swimlane content -->
+        <mxCell id="firebase" value="Firebase&#xa;Cloud&#xa;Messaging" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="940" y="760" width="90" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrows -->
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="custPlaceOrder" target="appReceive">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;" edge="1" parent="1" source="appReceive" target="appSaveDB">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;" edge="1" parent="1" source="appSaveDB" target="appPublish">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;" edge="1" parent="1" source="appPublish" target="appReturn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="appReturn" target="custResponse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="appPublish" target="queueExchange">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="queueExchange" target="queueCustomer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="queueExchange" target="queueRestaurant">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#ffe6cc;strokeColor=#d79b00;" edge="1" parent="1" source="queueCustomer" target="workerConsume">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="470" />
+              <mxPoint x="640" y="620" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;" edge="1" parent="1" source="workerConsume" target="workerProcess">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;" edge="1" parent="1" source="workerProcess" target="workerSendPush">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;" edge="1" parent="1" source="workerSendPush" target="workerAck">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="workerSendPush" target="firebase">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;" edge="1" parent="1" source="firebase" target="custPush">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="790" />
+              <mxPoint x="1200" y="165" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Async indicator -->
+        <mxCell id="asyncLine" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#FF0000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="580" y="850" as="sourcePoint" />
+            <mxPoint x="580" y="90" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="asyncLabel" value="USER RESPONSE&#xa;RETURNED HERE&#xa;(Steps 1-4: ~50ms)" style="text;html=1;strokeColor=#FF0000;fillColor=#FFCCCC;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="590" y="95" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="asyncLabel2" value="ASYNC&#xa;PROCESSING&#xa;(Steps 5-8)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="750" y="95" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Error handling note -->
+        <mxCell id="errorNote" value="ERROR HANDLING:&#xa;• Retry with exponential backoff&#xa;• Dead Letter Queue after 3 failures&#xa;• Worker doesn't affect main app" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;spacingLeft=10;spacingTop=5" vertex="1" parent="1">
+          <mxGeometry x="1170" y="560" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Benefits box -->
+        <mxCell id="benefitsBox" value="BENEFITS OF ASYNC:&#xa;✓ User doesn't wait for notification&#xa;✓ Notification failure ≠ order failure&#xa;✓ Workers can scale independently&#xa;✓ Automatic retry on failure&#xa;✓ Decoupled components" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;spacingLeft=10;spacingTop=5" vertex="1" parent="1">
+          <mxGeometry x="1170" y="750" width="160" height="100" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

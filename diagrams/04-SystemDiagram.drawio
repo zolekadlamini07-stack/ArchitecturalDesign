@@ -1,0 +1,424 @@
+<mxfile host="app.diagrams.net" modified="2024-01-01T00:00:00.000Z" agent="Mozilla/5.0" version="22.1.0" type="device">
+  <diagram name="Complete System Flow" id="system-diagram">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="COMPLETE SYSTEM FLOW - ORDER LIFECYCLE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="600" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="subtitle" value="(Customer + System + Restaurant + Driver)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="600" y="60" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Swimlane Headers -->
+        <mxCell id="swimlaneCustomer" value="CUSTOMER" style="swimlane;horizontal=1;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="280" height="1800" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swimlaneSystem" value="SYSTEM" style="swimlane;horizontal=1;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="340" y="120" width="400" height="1800" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swimlaneRestaurant" value="RESTAURANT" style="swimlane;horizontal=1;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="760" y="120" width="280" height="1800" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swimlaneDriver" value="DRIVER" style="swimlane;horizontal=1;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="120" width="280" height="1800" as="geometry" />
+        </mxCell>
+
+        <!-- START -->
+        <mxCell id="start" value="START" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="130" y="180" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Customer: Browse & Order -->
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="start" target="browseOrder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="browseOrder" value="Browse Menu&#xa;Add to Basket&#xa;Checkout" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="105" y="260" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Customer: Submit Order -->
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="browseOrder" target="submitOrder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="submitOrder" value="Submit Order" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="115" y="360" width="130" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to System: Validate -->
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="submitOrder" target="validateOrder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Validate Order -->
+        <mxCell id="validateOrder" value="VALIDATE ORDER&#xa;- Check items exist&#xa;- Check availability&#xa;- Calculate total&#xa;- Add platform fee" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="430" y="340" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Create Order -->
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="validateOrder" target="createOrder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Create Order -->
+        <mxCell id="createOrder" value="CREATE ORDER&#xa;State: PENDING_ACCEPTANCE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="420" y="460" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Notify Restaurant -->
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="createOrder" target="notifyRestaurant">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Notify Restaurant -->
+        <mxCell id="notifyRestaurant" value="PUSH NOTIFICATION&#xa;to Restaurant" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="450" y="550" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Restaurant Queue -->
+        <mxCell id="arrow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="notifyRestaurant" target="incomingQueue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Restaurant: Incoming Queue -->
+        <mxCell id="incomingQueue" value="Incoming Queue&#xa;+ Alert" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="840" y="550" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Customer: Waiting State -->
+        <mxCell id="customerWaiting" value="Waiting for restaurant..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="105" y="550" width="150" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow from Create Order to Customer Waiting -->
+        <mxCell id="arrow6b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;" edge="1" parent="1" source="createOrder" target="customerWaiting">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Review Order -->
+        <mxCell id="arrow7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="incomingQueue" target="reviewOrder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Restaurant: Review Order -->
+        <mxCell id="reviewOrder" value="Review Order" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="840" y="640" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Decision -->
+        <mxCell id="arrow8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="reviewOrder" target="acceptRejectDecision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Restaurant: Accept/Reject Decision -->
+        <mxCell id="acceptRejectDecision" value="Accept or&#xa;Reject?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="830" y="720" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow Reject to System -->
+        <mxCell id="arrow9" value="Reject" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="acceptRejectDecision" target="updateRejected">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Update Rejected -->
+        <mxCell id="updateRejected" value="UPDATE ORDER&#xa;State: REJECTED" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="450" y="730" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Customer Rejected -->
+        <mxCell id="arrow10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="updateRejected" target="customerRejected">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Customer: Order Rejected -->
+        <mxCell id="customerRejected" value="Order could not&#xa;be fulfilled" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="110" y="730" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to End Rejected -->
+        <mxCell id="arrow11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="customerRejected" target="endRejected">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- End Rejected -->
+        <mxCell id="endRejected" value="END" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="130" y="820" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow Accept to System -->
+        <mxCell id="arrow12" value="Accept" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="acceptRejectDecision" target="updateAccepted">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Update Accepted -->
+        <mxCell id="updateAccepted" value="UPDATE ORDER&#xa;State: ACCEPTED" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="450" y="880" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Process Payment -->
+        <mxCell id="arrow13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="updateAccepted" target="processPayment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Process Payment -->
+        <mxCell id="processPayment" value="PROCESS PAYMENT&#xa;(via Payment Provider)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="440" y="970" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Payment Decision -->
+        <mxCell id="arrow14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="processPayment" target="paymentDecision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Payment Decision -->
+        <mxCell id="paymentDecision" value="Payment&#xa;Success?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="470" y="1060" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow Fail -->
+        <mxCell id="arrow15" value="Fail" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="paymentDecision" target="paymentFailed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Customer: Payment Failed -->
+        <mxCell id="paymentFailed" value="Payment failed,&#xa;please retry" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1075" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow back to Browse -->
+        <mxCell id="arrow16" value="Retry" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;" edge="1" parent="1" source="paymentFailed" target="browseOrder">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="60" y="1100" />
+              <mxPoint x="60" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrow Success -->
+        <mxCell id="arrow17" value="Success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="paymentDecision" target="updatePreparing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Update Preparing -->
+        <mxCell id="updatePreparing" value="UPDATE ORDER&#xa;State: PREPARING&#xa;&#xa;CREATE PAYMENT RECORD" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="430" y="1180" width="200" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Customer Confirmed -->
+        <mxCell id="arrow18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;" edge="1" parent="1" source="updatePreparing" target="customerConfirmed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Customer: Order Confirmed -->
+        <mxCell id="customerConfirmed" value="Order Confirmed!&#xa;&#xa;● Order Accepted&#xa;● Preparing&#xa;○ Out for Delivery&#xa;○ Delivered" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="95" y="1170" width="170" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Restaurant Prep Queue -->
+        <mxCell id="arrow19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="updatePreparing" target="prepQueue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Restaurant: Preparation Queue -->
+        <mxCell id="prepQueue" value="Preparation Queue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="840" y="1190" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Prepare Food -->
+        <mxCell id="arrow20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="prepQueue" target="prepareFood">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Restaurant: Prepare Food -->
+        <mxCell id="prepareFood" value="Prepare Food" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="840" y="1270" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Mark Ready -->
+        <mxCell id="arrow21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="prepareFood" target="markReady">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Restaurant: Mark Ready -->
+        <mxCell id="markReady" value="Mark Ready" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="840" y="1350" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Assign Driver -->
+        <mxCell id="arrow22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="markReady" target="assignDriver">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Restaurant: Assign Driver -->
+        <mxCell id="assignDriver" value="Assign Driver&#xa;(from signed-in)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="825" y="1430" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to System Notify Driver -->
+        <mxCell id="arrow23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="assignDriver" target="notifyDriver">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Notify Driver -->
+        <mxCell id="notifyDriver" value="PUSH NOTIFICATION&#xa;to Driver" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="450" y="1440" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Driver View -->
+        <mxCell id="arrow24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="notifyDriver" target="driverView">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Driver: View Assignment -->
+        <mxCell id="driverView" value="View Assignment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="1440" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Acknowledge -->
+        <mxCell id="arrow25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="driverView" target="driverAck">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Driver: Acknowledge -->
+        <mxCell id="driverAck" value="Acknowledge" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="1520" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Pick Up -->
+        <mxCell id="arrow26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="driverAck" target="driverPickup">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Driver: Pick Up -->
+        <mxCell id="driverPickup" value="Pick Up Food" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="1600" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to In Route -->
+        <mxCell id="arrow27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="driverPickup" target="driverInRoute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Driver: Mark In Route -->
+        <mxCell id="driverInRoute" value="Mark: IN ROUTE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1135" y="1680" width="130" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to System Update -->
+        <mxCell id="arrow28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="driverInRoute" target="updateOutForDelivery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Update Out for Delivery -->
+        <mxCell id="updateOutForDelivery" value="UPDATE ORDER&#xa;State: OUT_FOR_DELIVERY" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="430" y="1680" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Customer Update -->
+        <mxCell id="arrow29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;" edge="1" parent="1" source="updateOutForDelivery" target="customerTracking">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Customer: Tracking Update -->
+        <mxCell id="customerTracking" value="Progress Update:&#xa;&#xa;● Order Accepted&#xa;● Preparing&#xa;● Out for Delivery&#xa;○ Delivered" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="95" y="1650" width="170" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Deliver -->
+        <mxCell id="arrow30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="driverInRoute" target="driverDeliver">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Driver: Deliver -->
+        <mxCell id="driverDeliver" value="Deliver to Customer&#xa;(call/knock)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="1760" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Mark Delivered -->
+        <mxCell id="arrow31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="driverDeliver" target="driverDelivered">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Driver: Mark Delivered -->
+        <mxCell id="driverDelivered" value="Mark: DELIVERED" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1135" y="1850" width="130" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to System Complete -->
+        <mxCell id="arrow32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="driverDelivered" target="updateComplete">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System: Update Complete -->
+        <mxCell id="updateComplete" value="UPDATE ORDER&#xa;State: COMPLETED&#xa;&#xa;Record in history" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="435" y="1830" width="190" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Customer Complete -->
+        <mxCell id="arrow33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="updateComplete" target="customerComplete">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Customer: Order Complete -->
+        <mxCell id="customerComplete" value="Order Complete!&#xa;&#xa;● Order Accepted&#xa;● Preparing&#xa;● Out for Delivery&#xa;● Delivered" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="95" y="1810" width="170" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legendBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="150" width="200" height="240" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legendTitle" value="LEGEND" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1430" y="160" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legendOval" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="200" width="40" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legendOvalText" value="Start / End" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="195" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legendRect" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="235" width="40" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legendRectText" value="Process" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="230" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legendDiamond" value="" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="270" width="40" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legendDiamondText" value="Decision" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="265" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legendSuccess" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="305" width="40" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSuccessText" value="Success" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="300" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legendError" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="340" width="40" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legendErrorText" value="Error / Failure" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="335" width="100" height="30" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

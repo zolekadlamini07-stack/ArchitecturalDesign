@@ -1,360 +1,217 @@
-# Question 3: Architecture at Scale - Answers
+> **Superseded:** the final, reworked answers (modular monolith + vertical slices) are in [`FinalAnswers/`](FinalAnswers/README.md). This file is kept as history. See `FinalAnswers/CHANGES-AND-REASONS.md` for what changed and why.
+
+# Question 3: Payment Failure Resilience & Integration - Answers
 
 ## Context: Scaling Beyond Q2
 
 | Aspect | Q1 | Q2 | Q3 |
 |--------|----|----|----|
-| Restaurants | 1 | 15 (expecting 50) | 50 (expecting more) |
-| Drivers | Small number | More (restaurant-owned) | Restaurant-owned, larger pool |
-| Customers | Small base | Significantly larger | Large, multi-city |
-| Developers | 3 | 5 | 12, organized into 2 teams |
-| Budget | Very limited | More to invest | Established, revenue-backed |
-| DevOps | None | None | Minimal - just enough for 2 deployables |
-| Geography | One city | Still one city | Possibly multiple cities |
+| Restaurants | 1 | 15 (expecting 50) | 50, expanding to 10 more cities |
+| Geography | One city | One city | 3 cities, expanding |
+| Developers | 3 | 5 | 12, in 2 teams |
+| Driver network | Small | Larger | Much larger |
+| Customer base | Small | Larger | Much larger |
+
+This question has two parts: **(A)** a production incident - the payment provider degrades during peak load, and we need to walk through exactly what happens in the architecture, not just the happy path; **(B)** a **final integration challenge** - we've acquired a smaller food-delivery company with its own Customer, Restaurant, Order, and Payment systems, and need to integrate without rewriting either platform.
 
 ---
 
-## 1. Problems Observed
+# Part A: The Friday Night Payment Outage
 
-### Problem 1: Payment Provider Failures Cascade Into Orders
+## A.1 Foundation: Payment is Already Extracted
 
-**Symptom:** When Stripe has a slow period or outage, orders get stuck in `ACCEPTED` state with no clean recovery path; retries are ad-hoc and sometimes double-charge customers.
+Before walking through the incident, the architecture this scenario runs on:
 
-**Why This Happens (Q2 Architecture):**
-- Payment logic lives inside the monolith, called in-process from the Order module
-- No circuit breaker - every request waits on Stripe regardless of its health
-- No idempotency key - a retried request can create a second charge
-- Failure handling is scattered across whatever code path happened to call Payment
+- **Payment is a standalone service** (extracted from the monolith in Q3, justified by exactly this kind of failure mode - see [Decision 1](#decision-1-extract-payment-before-this-incident-not-during-it))
+- Order and Payment communicate asynchronously via RabbitMQ (`ProcessPayment` command, `PaymentSucceeded`/`PaymentFailed`/`PaymentAmbiguous` events)
+- Every payment attempt is written to the Payment service's own database **before** calling Stripe, keyed by an idempotency key derived from the order
+- A **reconciliation worker** polls Stripe for any attempt left in an unresolved state
 
-### Problem 2: Payment Changes Require Coordinating With the Whole Monolith
+### Where Does State Live?
 
-**Symptom:** Both teams touch the Payment module indirectly (Order team calls it, Platform team maintains it), and any payment fix requires a full monolith redeploy.
+| State | Owner | Why |
+|-------|-------|-----|
+| **Payment state** (attempt records, provider responses, idempotency keys) | Payment service's own database | Only Payment service talks to Stripe; it's the only system that can be authoritative here |
+| **Order state** (lifecycle, what the customer/restaurant sees) | Order module's database (in the monolith) | Order lifecycle is a business concept independent of which payment provider is used |
 
-**Why This Happens:**
-- Payment is still just another module in the shared deployable
-- No independent release cycle - a payment hotfix ships with everything else
-- 12 developers across 2 teams now routinely block on each other's unrelated changes
+These are two separate sources of truth, reconciled through events - not a shared table, not a distributed transaction.
 
-### Problem 3: Two Teams, One Codebase, Blurring Ownership
+### Order States (Extended for Q3)
 
-**Symptom:** CODEOWNERS (from Q2) slows conflicts but doesn't stop them - teams still negotiate over shared infrastructure code and cross-module interfaces.
+```
+PENDING_ACCEPTANCE → ACCEPTED → PAYMENT_PENDING → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED → COMPLETED
+                  ↘ REJECTED                   ↘ PAYMENT_AMBIGUOUS → (resolves to PREPARING or PAYMENT_FAILED/REFUND_REQUIRED)
+                                                ↘ PAYMENT_FAILED
+                                                                    ↘ REFUND_REQUIRED → REFUNDED
+```
 
-**Why This Happens:**
-- Module boundaries are logical, not physical - everything still deploys and scales together
-- At 5 developers this was tolerable; at 12 across 2 teams it's a recurring source of PR back-and-forth
-
-### Problem 4: Restaurant Onboarding Is Still Manual
-
-**Symptom:** Platform staff still create restaurant accounts by hand; 50+ restaurants (and growing) makes this a bottleneck.
-
-**Why This Happens:**
-- Q1/Q2 never needed self-service onboarding at small scale
-- Restaurant module has no self-registration flow, no approval workflow
-
-### Problem 5: Notification Worker Is a Single Point of Throughput Limit
-
-**Symptom:** At higher order volume, the single notification worker (from Q2) occasionally lags during peak hours.
-
-**Why This Happens:**
-- One consumer process on the RabbitMQ queue from Q2
-- No horizontal scaling of workers
+`PAYMENT_AMBIGUOUS` and `REFUND_REQUIRED` are new in Q3 - Q1/Q2 only ever had clean success/fail outcomes. This incident is precisely why they're needed.
 
 ---
 
-## 2. What Still Works from Q2?
+## A.2 Walkthrough: What Actually Happens
 
-| Component | Status | Reasoning |
-|-----------|--------|-----------|
-| **Modular Monolith (minus Payment)** | KEEP | Still the right fit for Order, Menu, Restaurant, Delivery, Customer, Identity, Reporting |
-| **Redis Caching** | KEEP | Still solves the same read-heavy problem, now at larger scale |
-| **RabbitMQ** | KEEP | Reuse it as the backbone for Payment extraction too, not a new broker |
-| **PostgreSQL Primary + Read Replica** | KEEP | Reporting workload separation still valid |
-| **CODEOWNERS / Module Ownership** | KEEP, extend | Still useful inside the monolith; extend to match the 2-team split |
-| **Feature Flags** | KEEP | Deployment risk management still needed, now across two deployables |
-| **Driver Model (restaurant-owned)** | KEEP | Business model unchanged |
+### 1. The payment request times out
+
+Customer places an order → Order service writes the order as `PAYMENT_PENDING` (fast, local DB write, returns immediately to the customer) → publishes `ProcessPayment{orderId, idempotencyKey: "order-{id}-payment", amount}` to RabbitMQ.
+
+Payment service consumes the command, **writes a `payment_attempts` row with state `PENDING` before calling Stripe**, then calls Stripe with a bounded timeout (e.g. 10s) and Stripe's own idempotency key set to the same value.
+
+If the call exceeds the timeout, the HTTP client gives up - but **we don't know whether Stripe actually processed the charge**. We do not mark this `FAILED`. We mark it `AMBIGUOUS` and stop. We do **not** tell the Order service it failed, because telling the customer "payment failed" when it might have succeeded is worse than a short delay.
+
+### 2. The payment actually succeeds despite the timeout
+
+Because the Stripe call was made with Stripe's own idempotency key, Stripe has a definitive, queryable answer for that key regardless of whether our client saw the response. The **reconciliation worker** picks up any `AMBIGUOUS` attempt older than ~30 seconds and queries Stripe directly by idempotency key (`GET /payment_intents?idempotency_key=...`). If Stripe says `succeeded`, the worker updates the local record to `SUCCEEDED` and publishes `PaymentSucceeded` - exactly as if the original call had returned normally, just late. The order transitions `PAYMENT_PENDING → PREPARING` on the same path it always would have.
+
+### 3. The customer retries (clicks "Place Order" again)
+
+The client includes a client-generated order idempotency key with the original "place order" request. If the same key arrives again (double-click, retry after a spinner, etc.), the Order service recognizes it and **returns the existing order** instead of creating a second one. The customer never gets a second charge from their own retry, because no second order - and therefore no second `ProcessPayment` command - is ever created.
+
+### 4. The same payment request is received twice
+
+This is a different case: not the customer retrying, but RabbitMQ redelivering the same `ProcessPayment` message (e.g. the Payment service consumer crashed after processing but before acknowledging the message - at-least-once delivery guarantees a redelivery).
+
+The handler checks for an existing `payment_attempts` row by idempotency key **before** doing anything:
+- If one exists and is `SUCCEEDED`/`FAILED`, it just re-publishes the corresponding event and acknowledges - never calls Stripe again.
+- If one exists and is `PENDING`/`AMBIGUOUS`, it defers to the reconciliation worker rather than firing a second concurrent charge attempt.
+
+Stripe's own idempotency key is the second line of defense - even if our local check somehow raced, Stripe itself will not double-charge for the same key.
+
+### 5. There's a crash after payment succeeds
+
+Worst case: Stripe confirms success, but the process crashes before the `PaymentSucceeded` event is published. If the payment service only updated its own DB and then crashed before publishing, we'd have a successful charge with no record anywhere that the order should proceed - money taken, food never made.
+
+This is solved with a **transactional outbox**: the Stripe success response, the `payment_attempts` state update, and an outbox row for the `PaymentSucceeded` event are written in **one local database transaction**. A separate relay process reads unpublished outbox rows and publishes them to RabbitMQ, retrying until it succeeds. A crash at any point before the DB commit means nothing happened yet (safe to retry from the top); a crash after the DB commit means the event is durably queued for publishing - it is never lost in memory.
+
+### 6. The payment provider comes back online
+
+The circuit breaker around Stripe calls (tripped `OPEN` once error/timeout rates crossed a threshold during the outage) moves to `HALF-OPEN`, allows a trickle of real requests through, and closes again once they succeed - without a human flipping a switch. Independently, the reconciliation worker keeps sweeping every `AMBIGUOUS`/`PENDING` attempt and resolves it against Stripe's now-healthy API, regardless of whether it was created before or after recovery.
+
+### 7. Failed operations need to be retried
+
+Genuine failures (Stripe definitively says `declined`, not just "timed out") go through bounded retry with exponential backoff **only for retryable error classes** (network errors, 5xx from Stripe) - a hard decline is never blindly retried. After the retry budget is exhausted, the message goes to a dead-letter queue for manual/ops review rather than retrying forever.
+
+### 8. How does the architecture recover, end to end?
+
+- **Real-time path:** circuit breaker contains the blast radius while Stripe is unhealthy; new orders still get created (as `PAYMENT_PENDING`), they just queue up as `AMBIGUOUS`/retrying rather than failing outright.
+- **Catch-up path:** the reconciliation worker drains the backlog of `AMBIGUOUS` attempts as Stripe recovers, resolving each to its true outcome.
+- **Audit path:** a daily batch job compares our `payment_attempts` table against Stripe's settlement report for the day, flagging any attempt we have no record resolving (belt-and-braces against a bug in the real-time reconciliation).
+- **Customer-facing path:** while an order sits in `PAYMENT_AMBIGUOUS`, the customer sees "Confirming your payment..." rather than a hard failure - set expectations without lying about the outcome.
 
 ---
 
-## 3. What Changes Are Needed?
+## A.3 Questions to Consider - Direct Answers
 
-### Change 1: Extract Payment Into Its Own Service
+| Question | Answer |
+|----------|--------|
+| Where does payment state live? | Payment service's own database - the only system that talks to Stripe |
+| Where does order state live? | Order module's database in the monolith |
+| What states can an order have? | See state diagram above - including the new `PAYMENT_AMBIGUOUS` and `REFUND_REQUIRED` states |
+| What happens if payment succeeds but order creation fails? | The order is always created (as `PAYMENT_PENDING`) **before** payment is attempted, so this specific ordering can't occur. The real equivalent - payment succeeds but the order fails to transition because the event is lost - is prevented by the transactional outbox (A.2.5) |
+| How do we prevent duplicate payments? | Three layers: client-side order idempotency key (stops double-clicks), our own idempotency key check before calling Stripe (stops message redelivery), Stripe's own idempotency key (stops any race that slips past the first two) |
+| How do we safely retry? | Every handler is idempotent (check-before-act), retries use exponential backoff and are bounded, failed-after-retries goes to a DLQ instead of looping forever |
+| Which operations should be synchronous? | Order creation (fast local write), menu/basket reads, anything the customer waits on in the UI |
+| Which should be asynchronous? | The actual call to Stripe, notification sending, restaurant order delivery - anything touching an external or slow dependency |
+| Where should failures be isolated? | Inside the Payment service, behind a circuit breaker - a Stripe outage degrades payment confirmation latency, not order creation or restaurant browsing |
+| How do we know what happened after the fact? | The `payment_attempts` table is a full audit log (every attempt, every state transition, every provider response), plus the transactional outbox gives a durable record of every event we intended to publish |
+| How do we reconcile our records with the payment provider? | Real-time reconciliation worker for `AMBIGUOUS` attempts, plus a daily batch reconciliation against Stripe's settlement report |
 
-**Solves:** Problem 1 (Provider Failures Cascade), Problem 2 (Coordinated Deploys)
+---
 
-**What:**
-- Payment becomes a separately deployed service with its own database (payments, payment_attempts tables)
-- Order module no longer calls Payment in-process; it publishes a `ProcessPayment` command over RabbitMQ and reacts to `PaymentSucceeded` / `PaymentFailed` events
-- This is the **one and only** service extracted in Q3 - not a jump to microservices everywhere
+# Part B: Final Integration Challenge - Acquiring a Smaller Platform
 
-**Why Payment Specifically:**
-- It's the module with a genuinely different failure mode (external, third-party, network-bound) from the rest of the system
-- It's the module both teams depend on but neither fully owns - extraction resolves the ownership ambiguity
-- Q2's RabbitMQ is already in place, so this is additive infrastructure, not new infrastructure
+## B.1 The Constraint
 
-**Implementation:**
+We've acquired a company with its own Customer, Restaurant, Order, and Payment systems. The brief is explicit: **integrate without rewriting either platform.** This rules out a big-bang migration onto our stack and rules out forcing their systems to adopt our data model directly.
+
+## B.2 Approach: Anti-Corruption Layer, Not a Merge
+
+We introduce one new component - an **Integration Service** - that sits entirely between the two platforms. It is the only thing that talks to the acquired company's APIs, and it is the only thing that translates between their domain model and ours. Neither platform is modified to understand the other's concepts.
+
+```
+┌─────────────────────────────┐              ┌─────────────────────────────┐
+│       OUR PLATFORM          │              │   ACQUIRED COMPANY PLATFORM │
+│  Order / Restaurant /       │              │   Customer / Restaurant /   │
+│  Customer / Payment service │              │   Order / Payment           │
+└───────────────┬─────────────┘              └───────────────┬─────────────┘
+                │  (our canonical domain model only)          │ (their model, untouched)
+                ▼                                              ▲
+        ┌───────────────────────────────────────────────────────┐
+        │              INTEGRATION SERVICE (the ACL)             │
+        │  - Exposes OUR domain model to our modules              │
+        │  - Internally calls their APIs, translates both ways   │
+        │  - Circuit breaker + retries around every call to them │
+        │  - Owns the mapping, owns nothing else                 │
+        └───────────────────────────────────────────────────────┘
+```
+
+### Why an ACL (and not a shared database, and not a rewrite)
+
+| Option | Verdict | Why |
+|--------|---------|-----|
+| Shared database between the two platforms | Rejected | Couples two independently-evolving schemas; a change on either side breaks the other silently |
+| Migrate acquired company onto our platform immediately | Rejected | Explicitly ruled out by the brief; also a large, risky rewrite with no proven need yet |
+| Anti-corruption layer / Integration Service | **Chosen** | Keeps both platforms independently deployable and evolvable; isolates translation logic in one place; matches how we already isolate Payment behind an interface |
+
+## B.3 Data Ownership
+
+Each platform remains the **sole owner and source of truth for its own data**. We never dual-write to both databases, and the Integration Service holds no data of its own beyond short-lived caches and a mapping table (e.g. `our_restaurant_id ↔ their_restaurant_id`). If our Order module needs to show a unified order history that includes orders placed against acquired-company restaurants, it stores **our own order record** (so our customer's history is coherent) and the Integration Service is responsible for keeping it in sync with what actually happened on their side - not the other way around.
+
+## B.4 Model Translation
+
+Their Order state machine, their Customer schema, and our equivalents will not line up field-for-field (this is normal after any acquisition, and is exactly the "model translation" concern the brief calls out). The Integration Service's adapters are where that gets reconciled:
+
 ```javascript
-// Order module (in the monolith) - publishes a command, does not wait
-async acceptOrder(orderId) {
-  await this.orderRepository.updateState(orderId, 'ACCEPTED');
-  await this.messageQueue.publish('payments', {
-    type: 'PROCESS_PAYMENT',
-    orderId,
-    idempotencyKey: `order-${orderId}-payment`, // stable key for safe retries
-    amount: order.totalAmount
-  });
-  return order; // state becomes PAYMENT_PENDING, resolved asynchronously
-}
-
-// Order module - reacts to the result
-async onPaymentSucceeded(event) {
-  await this.orderRepository.updateState(event.orderId, 'PREPARING');
-}
-
-async onPaymentFailed(event) {
-  await this.orderRepository.updateState(event.orderId, 'PAYMENT_FAILED');
-  await this.notifyCustomer(event.orderId, 'payment_failed');
+// Integration Service - Order adapter
+function toOurOrder(theirOrder) {
+  return {
+    orderId: ourIdFor(theirOrder.id),           // mapping table lookup
+    state: mapTheirStateToOurs(theirOrder.status), // explicit translation table, not a 1:1 guess
+    restaurantId: ourIdFor(theirOrder.restaurant_id),
+    items: theirOrder.line_items.map(toOurOrderItem),
+    source: 'acquired-platform'                  // never hide where data came from
+  };
 }
 ```
 
-```javascript
-// Payment Service (separate deployable) - owns the Stripe relationship
-async handleProcessPayment(command) {
-  const existing = await this.paymentRepository.findByIdempotencyKey(command.idempotencyKey);
-  if (existing) return; // already handled - safe to redeliver
+We never stretch our domain model to accommodate their quirks, and we never expose their raw model to our system - the adapter is the one place that absorbs the mismatch.
 
-  try {
-    const result = await this.circuitBreaker.fire(() =>
-      this.stripe.charge(command.amount, command.idempotencyKey)
-    );
-    await this.paymentRepository.save({ ...command, state: 'SUCCEEDED', result });
-    await this.messageQueue.publish('orders', { type: 'PAYMENT_SUCCEEDED', orderId: command.orderId });
-  } catch (err) {
-    await this.paymentRepository.save({ ...command, state: 'FAILED', error: err.message });
-    await this.messageQueue.publish('orders', { type: 'PAYMENT_FAILED', orderId: command.orderId });
-  }
-}
-```
+## B.5 Synchronous vs Asynchronous Integration
 
-### Change 2: Circuit Breaker + Idempotency Around the Payment Provider
+| Flow | Pattern | Why |
+|------|---------|-----|
+| Browsing acquired-company restaurants/menus | Synchronous read-through API call, cached (same Redis cache-aside pattern from Q2) | Read-heavy, latency-sensitive, tolerates a short cache TTL |
+| An order placed against an acquired-company restaurant | Our Order module creates the order locally (so tracking/history work normally), Integration Service forwards it asynchronously via a command, same as our own Payment pattern | Keeps order placement fast and consistent with how we already treat async side effects |
+| Status updates flowing back from their Order/Payment system | Their webhooks translated into our internal event schema by the Integration Service, published to our RabbitMQ | Reuses existing event infrastructure; our Order module only ever consumes our own event shapes |
 
-**Solves:** Problem 1 (Provider Failures Cascade)
+## B.6 External System Failures
 
-**What:**
-- Wrap all Stripe calls in a circuit breaker (e.g. `opossum` in Node, `Polly` in .NET)
-- Every payment attempt carries an idempotency key derived from the order ID
-- When the circuit is open, queue the attempt for retry with backoff instead of failing immediately
+The acquired company's platform is treated exactly like Stripe was in Part A: an external dependency we don't control. The Integration Service wraps every call to it in the same circuit breaker + bounded retry + idempotency pattern used for Payment. If their system is down, browsing their restaurants degrades gracefully (serve cached data, mark them temporarily unavailable) rather than taking down our platform.
 
-**Why This Solution:**
-- Isolates a third-party outage to the Payment service instead of letting it stall order acceptance
-- Idempotency key prevents double-charges on retried or redelivered messages (RabbitMQ gives at-least-once delivery)
+## B.7 Versioning and Coupling
 
-### Change 3: Align Team Ownership to the New Service Boundary
+- The Integration Service pins to a specific, agreed version of the acquired company's API and we run contract tests against it in CI, so a change on their side fails our build loudly instead of breaking silently in production.
+- Our Order/Restaurant/Customer modules depend only on the Integration Service's interface (our canonical model) - they have **zero knowledge** that an acquired company's system exists. This means if we later decide to migrate an acquired restaurant fully onto our platform, we can do it one restaurant at a time behind the same interface, with no changes required in the rest of the system - the Integration Service is also the seam for a future strangler-fig migration, even though nothing about today's integration requires one.
 
-**Solves:** Problem 3 (Two Teams, One Codebase)
-
-**What:**
-- **Team Commerce:** Order, Menu, Restaurant, Delivery (the monolith's core ordering flow)
-- **Team Platform:** Identity, Customer, Reporting, and the new standalone Payment service
-- Each team owns its deployable(s) end-to-end, including on-call
-
-**Why This Works:**
-- Payment extraction gives Team Platform a service they fully own instead of a module they share
-- Reduces cross-team PRs; each team's deploy cadence is independent where it matters most (Payment)
-
-### Change 4: Self-Service Restaurant Onboarding
-
-**Solves:** Problem 4 (Manual Onboarding)
-
-**What:**
-- Restaurant module gains a self-registration flow with an approval queue for platform staff
-- Still inside the existing Restaurant module - no new service needed
-
-**Why Not a New Service:**
-- This is a feature gap, not an architectural one; the Restaurant module already owns this data
-
-### Change 5: Scale Notification Workers Horizontally
-
-**Solves:** Problem 5 (Single Worker Bottleneck)
-
-**What:**
-- Run multiple instances of the notification worker consuming the same RabbitMQ queue
-- RabbitMQ's competing-consumers pattern distributes load automatically; no code change needed beyond deployment config
-
-**Why This Solution:**
-- Lowest-effort fix; RabbitMQ already supports this, it's purely an ops change
-
----
-
-## 4. What Should NOT Change?
-
-| Area | Keep As-Is | Reasoning |
-|------|------------|-----------|
-| **Order, Menu, Restaurant, Delivery, Identity, Customer, Reporting as monolith modules** | Yes | None of them have Payment's "external, failure-prone dependency" problem; extracting them has no corresponding payoff |
-| **Full microservices migration** | No | 12 devs / 2 teams can responsibly own exactly one extracted service, not a dozen |
-| **Kubernetes / service mesh** | No | Two deployables (monolith + payment service) don't need orchestration machinery; a simple container deploy pipeline suffices |
-| **Saga orchestrator framework** | No | Choreography via RabbitMQ events (as used for notifications since Q2) is sufficient for the one cross-service flow we have |
-| **Database sharding** | No | 50 restaurants is still comfortably within a single primary + replica's capacity with proper indexing |
-| **Switching payment providers** | No | The problem is resilience around Stripe, not Stripe itself |
-
----
-
-## 5. Q3 Architecture Summary
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    MODULAR MONOLITH  (Team Commerce)                        │
-│                                                                             │
-│   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐                      │
-│   │Restaurant│ │  Menu   │  │  Order  │  │Delivery │                      │
-│   └─────────┘  └─────────┘  └─────────┘  └─────────┘                      │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-       │ reads/cache        │ writes               │ publishes/consumes
-       ▼                    ▼                       ▼
-┌───────────────┐    ┌───────────────┐    ┌─────────────────────────────┐
-│     Redis     │    │  PostgreSQL   │    │   RabbitMQ (shared broker)  │
-│     Cache     │    │ Primary+Replica│   │  - notifications queue       │
-└───────────────┘    └───────────────┘    │  - payments command/event    │
-                                           └──────────────┬──────────────┘
-                                                            │
-                                                            ▼
-                              ┌───────────────────────────────────────────────┐
-                              │   PAYMENT SERVICE  (Team Platform, own deploy) │
-                              │   - Circuit breaker around Stripe             │
-                              │   - Idempotency store                         │
-                              │   - Own database (payments, attempts)         │
-                              └───────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│          MODULAR MONOLITH, continued (Team Platform)                       │
-│   ┌─────────┐  ┌─────────┐  ┌─────────┐                                   │
-│   │Identity │  │Customer │  │Reporting│                                   │
-│   └─────────┘  └─────────┘  └─────────┘                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 6. Problem-to-Solution Mapping
-
-| Problem | Solution | Why This Solution |
-|---------|----------|-------------------|
-| Payment provider failures cascade | Extract Payment + circuit breaker + idempotency | Isolates third-party failure mode from the rest of the system |
-| Coordinated deploys for payment fixes | Independent Payment service deployment | Decouples payment release cycle from monolith release cycle |
-| Two teams, one codebase | Team ownership aligned to service boundary | Clear accountability, fewer cross-team PRs |
-| Manual restaurant onboarding | Self-service flow in Restaurant module | Feature gap, not architectural - no new service needed |
-| Notification worker bottleneck | Horizontal scaling of consumers | RabbitMQ already supports this; zero new infrastructure |
-
----
-
-## 7. Implementation Priority
-
-| Priority | Change | Effort | Impact | Why This Order |
-|----------|--------|--------|--------|----------------|
-| 1 | Idempotency keys on payment calls | Low | High | Prevents double-charges immediately, even before full extraction |
-| 2 | Circuit breaker around Stripe calls | Low | High | Contains blast radius of provider outages right away |
-| 3 | Extract Payment service | High | High | The core Q3 change; needs 1 and 2 done first to extract safely |
-| 4 | Realign team ownership | Low | Medium | Process change, cheap once the service boundary exists |
-| 5 | Scale notification workers | Low | Medium | Pure ops change, do whenever peak load requires it |
-| 6 | Self-service restaurant onboarding | Medium | Medium | Business value, no urgency tied to the other changes |
-
----
-
-## 8. Decisions Made
-
-### Decision 1: Extract Only Payment, Nothing Else
-
-**Choice:** Payment becomes a standalone service; every other module stays in the monolith.
-
-**Why:**
-- Payment is the only module with a genuinely different failure profile (external dependency)
-- Extracting modules without that justification would add deployment/ops overhead for no corresponding benefit
-- Matches the guiding principle from Q1/Q2: solve the problem you actually have
-
-### Decision 2: Choreography Over a Saga Orchestrator
-
-**Choice:** Order and Payment communicate via RabbitMQ commands/events (choreography), not a dedicated saga orchestration framework.
-
-**Why:**
-- Only one cross-service flow exists (place order → process payment → resume order)
-- RabbitMQ is already proven in this system since Q2's notification work
-- A saga framework would be infrastructure in search of a problem
-
-### Decision 3: Idempotency Key Derived from Order ID
-
-**Choice:** Use a deterministic idempotency key (`order-{id}-payment`) rather than a separately generated UUID per attempt.
-
-**Why:**
-- Guarantees retries and redelivered messages for the same order never double-charge
-- Simple to reason about; no extra coordination table needed beyond the payment record itself
-
-### Decision 4: Team Boundaries Follow Service Boundaries
-
-**Choice:** Team Platform owns Payment (and Identity/Customer/Reporting); Team Commerce owns the ordering-flow modules.
-
-**Why:**
-- Gives the team that already maintained Payment logic a service they fully control end-to-end
-- Reduces the ambiguous shared ownership that caused friction in Q2's CODEOWNERS approach
-
----
-
-## 9. What We're NOT Doing (And Why)
+## B.8 What We're Deliberately Not Doing
 
 | Option Rejected | Why |
 |-----------------|-----|
-| Full microservices migration | Only one module has a justification for extraction; the rest gain nothing from it |
-| Kubernetes / container orchestration platform | Two deployables don't need orchestration; a simple deploy pipeline per service is enough |
-| Saga orchestrator (e.g. Temporal, Camunda) | One cross-service flow doesn't justify a new orchestration framework |
-| Database sharding | 50 restaurants is well within a single primary + replica's capacity |
-| Switching payment providers | The problem is resilience, not the provider itself |
-| Splitting Order and Delivery into separate services | Neither has Payment's external-failure problem; no justification yet |
+| Rewriting the acquired company's platform onto our stack now | Explicitly out of scope; no proven need yet, high risk |
+| Direct database access between the two platforms | Breaks data ownership, creates silent coupling |
+| Exposing our internal domain model directly to their system (or vice versa) | Defeats the purpose of the ACL; any of their model changes would leak straight into ours |
+| A full event-sourced merge of both platforms' histories | Nothing in the brief asks for a unified historical record - only forward integration |
 
 ---
 
-## 10. Comparison: Q2 vs Q3
+## Guiding Principle (Unchanged from Q1/Q2)
 
-| Aspect | Q2 | Q3 |
-|--------|----|----|
-| Deployment | Single modular monolith | Modular monolith + 1 extracted service (Payment) |
-| Payment Handling | In-process module call | Async command/event via RabbitMQ to standalone service |
-| Payment Resilience | None (direct Stripe call) | Circuit breaker + idempotency key |
-| Team Structure | 5 devs, informal module ownership | 12 devs, 2 teams, ownership aligned to deployables |
-| Notifications | Single worker | Horizontally scaled workers |
-| Restaurant Onboarding | Manual (platform staff) | Self-service with approval queue |
-| Infrastructure | Redis, RabbitMQ, read replica | + Payment service, its own database, circuit breaker library |
-
----
-
-## 11. New Infrastructure
-
-| Component | Purpose | Technology |
-|-----------|---------|------------|
-| **Payment Service** | Standalone deployable owning the Stripe relationship | Same runtime/language as monolith, separate process |
-| **Payment Database** | Payment and payment-attempt records, isolated from the monolith's DB | PostgreSQL (separate instance or schema) |
-| **Circuit Breaker** | Contain Stripe outages/latency spikes | e.g. `opossum` (Node) / `Polly` (.NET) |
-| **Idempotency Store** | Prevent double-charges on retried/redelivered messages | Table in the Payment database, keyed by idempotency key |
-| **Additional RabbitMQ Queues** | `payments` command/event channel between Order and Payment | Same RabbitMQ broker from Q2 |
-
----
-
-## 12. Guiding Principle
-
-**Solve Q3's problems for Q3's constraints.**
-
-- Extract only what has a genuine failure-mode or ownership justification (Payment) - resist extracting everything just because the team is bigger now
-- Reuse Q2's infrastructure (RabbitMQ, Redis, read replica) rather than introducing new platforms
-- Team structure should follow the architecture that already makes sense, not the other way around
-- Still no Kubernetes, no service mesh, no saga framework - the problems in front of us don't require them
+**Solve the problem we've actually been given.** Part A's resilience patterns exist because a real, specific failure mode (ambiguous payment outcomes under provider degradation) was described in detail - not as general-purpose "distributed systems best practice." Part B's Integration Service exists because we were explicitly told not to rewrite either platform - it is the minimum architecture that satisfies that constraint, not a speculative platform-unification effort.
 
 ---
 
 ## Summary
 
-Q3 is about **extracting one service, deliberately** - not a wholesale move to microservices. The monolith remains the right home for Order, Menu, Restaurant, Delivery, Identity, Customer, and Reporting; only Payment earns its own deployable, because it is the one module with a genuinely different failure profile (a flaky third-party dependency) and genuinely ambiguous ownership between the two teams.
+**Part A** - the Friday night incident is handled by treating payment as inherently ambiguous rather than binary: every attempt is recorded before calling Stripe, idempotency keys (ours and Stripe's) prevent duplicate charges across retries and redeliveries, a transactional outbox guarantees a successful payment is never lost to a crash, and a reconciliation worker (plus daily batch audit) resolves anything left uncertain once the provider recovers.
 
-The key changes are:
-1. **Payment extraction** - isolate the one component with an external failure mode
-2. **Resilience patterns** - circuit breaker and idempotency around the payment provider
-3. **Choreography over orchestration** - reuse RabbitMQ rather than adopt a saga framework
-4. **Team alignment** - ownership follows the new service boundary, not the reverse
-5. **Everything else stays put** - growth in team size and restaurant count doesn't by itself justify further extraction
+**Part B** - the acquisition is integrated through a single Anti-Corruption Layer (the Integration Service) that owns all translation between our domain model and theirs, isolates failures in the acquired platform exactly like any other external dependency, and keeps both platforms independently deployable - satisfying "don't rewrite either platform" while leaving the door open to a gradual migration later if the business ever wants one.

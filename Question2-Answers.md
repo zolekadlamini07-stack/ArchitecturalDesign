@@ -1,3 +1,5 @@
+> **Superseded:** the final, reworked answers (modular monolith + vertical slices) are in [`FinalAnswers/`](FinalAnswers/README.md). This file is kept as history. See `FinalAnswers/CHANGES-AND-REASONS.md` for what changed and why.
+
 # Question 2: Architecture Evolution - Answers
 
 ## Context: Six Months After Question 1

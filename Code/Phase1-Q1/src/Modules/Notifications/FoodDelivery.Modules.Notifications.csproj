@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Notifications MODULE: one business capability with its own code, its own schema and its own public API.
+    Everything in this project is 'internal' EXCEPT the PublicApi folder and the NotificationsModule class.
+    That means the C# compiler itself stops other modules from using our internals (D3).
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\FoodDelivery.BuildingBlocks.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="EFCore.NamingConventions" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- This module's tables. Compiled into the DLL and run at startup (IF NOT EXISTS). -->
+    <EmbeddedResource Include="Data\schema.sql" />
+  </ItemGroup>
+</Project>

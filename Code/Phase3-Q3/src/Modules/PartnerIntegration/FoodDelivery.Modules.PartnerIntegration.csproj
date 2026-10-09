@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    FINAL CHALLENGE - the PartnerIntegration module = ANTI-CORRUPTION LAYER (D26).
+    The ONLY code in our platform that knows the acquired company exists.
+      Adapter/       their API (port + adapter), behind a circuit breaker
+      Translation/   their model <-> our model, in ONE place
+      Data/          id_map (their ids <-> ours), inbox, forwarded orders
+      Features/      one folder per integration flow (vertical slices, like every other module)
+    It talks to the rest of OUR system only through public APIs: Restaurants and Ordering.
+    Delete this project and nothing else in the platform fails to compile.
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\FoodDelivery.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\Restaurants\FoodDelivery.Modules.Restaurants.csproj" />
+    <ProjectReference Include="..\Ordering\FoodDelivery.Modules.Ordering.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Polly.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\schema.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Lets the TEST project check the translation rules. Other modules still cannot see internals. -->
+    <InternalsVisibleTo Include="FoodDelivery.Tests" />
+  </ItemGroup>
+</Project>

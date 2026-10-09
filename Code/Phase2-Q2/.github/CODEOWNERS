@@ -1,0 +1,12 @@
+# Q2 CHANGE 6 (D17): every module has an owner who reviews changes to it.
+# A change to a module's PublicApi folder needs that owner's approval - public APIs are contracts.
+# (Example only: GitHub reads CODEOWNERS from the repository root.)
+/Code/Phase2-Q2/src/Modules/Identity/        @owner-identity
+/Code/Phase2-Q2/src/Modules/Customers/       @owner-customers
+/Code/Phase2-Q2/src/Modules/Restaurants/     @owner-restaurants
+/Code/Phase2-Q2/src/Modules/Ordering/        @owner-ordering
+/Code/Phase2-Q2/src/Modules/Payments/        @owner-payments
+/Code/Phase2-Q2/src/Modules/Delivery/        @owner-delivery
+/Code/Phase2-Q2/src/Modules/Notifications/   @owner-notifications
+/Code/Phase2-Q2/src/Modules/Reporting/       @owner-reporting
+/Code/Phase2-Q2/src/BuildingBlocks/          @whole-team

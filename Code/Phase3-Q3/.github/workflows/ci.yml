@@ -1,0 +1,25 @@
+# Q3: same pipeline as Q2, plus the contract tests between the two teams run here too.
+# (Example only: GitHub runs workflows from the repository root's .github folder.)
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [master]
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - run: dotnet build Code/Phase3-Q3
+      # Includes the ARCHITECTURE TESTS: an illegal cross-module dependency fails the PR here.
+      - run: dotnet test --project Code/Phase3-Q3/tests/FoodDelivery.Tests
+  deploy:
+    needs: build-test
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      # The PaaS replaces instances one at a time, each must pass /health first (rolling deploy).
+      # Database migrations must be EXPAND/CONTRACT: old and new code run side by side briefly.
+      - run: echo "trigger PaaS deploy of BOTH processes (Api + Worker) from the same build"

@@ -1,0 +1,11 @@
+# Q1 infrastructure: ONE database. That's all (D4, D9).
+# Port 5433 on your machine, so it won't clash with a PostgreSQL you may already have installed.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: fooddelivery
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"

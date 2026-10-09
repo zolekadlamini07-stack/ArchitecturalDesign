@@ -11,6 +11,10 @@ FinalAnswers/
   README.md                  <- you are here: reading order, the story, pitches, likely questions
   PLAIN-ENGLISH-GUIDE.md     <- every technical term explained simply, with everyday analogies
   Architecture-Presentation.pptx <- black-and-white slide deck (31 slides, speaker notes included)
+
+../Code/                     <- the architecture BUILT in C# / ASP.NET Core, one solution per phase
+                                (Phase1-Q1, Phase2-Q2, Phase3-Q3 + challenge). Code/README.md maps
+                                every concept in these documents to the file where you can see it.
   DECISION-LOG.md            <- every pattern/technology: what it is, options, pros/cons, why now (D1-D29)
   CHANGES-AND-REASONS.md     <- what changed from the earlier material, and the technical reason (C1-C14)
   Question1/  Question1.md   <- the answer, under each part of the question

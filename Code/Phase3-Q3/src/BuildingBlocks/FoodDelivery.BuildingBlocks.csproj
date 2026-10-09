@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    BuildingBlocks = the small "shared/" folder from Q1 section 6.
+    Rule: only technical plumbing lives here (module contract, event bus, Money, auth helpers).
+    NO business logic. If something here starts knowing about orders or menus, it belongs in a module.
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <!-- Q2: the outbox table is mapped with EF Core in every publishing module. -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+# Build output and IDE files - never committed
+bin/
+obj/
+.vs/
+*.user
+TestResults/

@@ -1,0 +1,19 @@
+# Q3 (D25): 12 developers in TWO TEAMS. Module boundaries become team boundaries (Conway's law,
+# used on purpose). A change to a module's PublicApi needs that team's approval - it is a contract.
+# (Example only: GitHub reads CODEOWNERS from the repository root.)
+
+# Team A - Ordering & Payments
+/Code/Phase3-Q3/src/Modules/Identity/            @team-ordering-payments
+/Code/Phase3-Q3/src/Modules/Customers/           @team-ordering-payments
+/Code/Phase3-Q3/src/Modules/Ordering/            @team-ordering-payments
+/Code/Phase3-Q3/src/Modules/Payments/            @team-ordering-payments
+/Code/Phase3-Q3/src/Modules/Payments.Contracts/  @team-ordering-payments @team-restaurants-delivery
+/Code/Phase3-Q3/src/Modules/Notifications/       @team-ordering-payments
+
+# Team B - Restaurants & Delivery
+/Code/Phase3-Q3/src/Modules/Restaurants/         @team-restaurants-delivery
+/Code/Phase3-Q3/src/Modules/Delivery/            @team-restaurants-delivery
+/Code/Phase3-Q3/src/Modules/Reporting/           @team-restaurants-delivery
+/Code/Phase3-Q3/src/Modules/PartnerIntegration/  @team-restaurants-delivery
+
+/Code/Phase3-Q3/src/BuildingBlocks/              @team-ordering-payments @team-restaurants-delivery

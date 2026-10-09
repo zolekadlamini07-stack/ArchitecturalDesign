@@ -1,0 +1,19 @@
+# Q3 infrastructure - UNCHANGED from Q2 (no broker, no new servers). The Friday fixes are code, not infrastructure.
+#   postgres : primary database (+ the outbox tables and the job queue - no message broker, D12)
+#   redis    : shared cache for browse/menu (D11, problem P1)
+# In production the read replica (D14) is a managed replica of postgres; locally the
+# "ReportingReplica" connection string simply points at the same database.
+# Ports 5435 / 6381 so this can run next to the Phase 1 and Phase 2 stacks.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: fooddelivery
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+  redis:
+    image: redis:7
+    ports:
+      - "6381:6379"

@@ -1,0 +1,233 @@
+### =====================================================================================
+### Q3 END-TO-END WALKTHROUGH (+ FRIDAY NIGHT SIMULATION + CHALLENGE) (open in VS Code with the "REST Client" extension, Rider or
+### Visual Studio). Run the requests top to bottom - each one uses values from earlier ones.
+### Same flow as Q1 - but run BOTH processes (Api AND Worker). Watch the WORKER console: that's where
+### notifications, profiles and order updates now happen, moments after each request returns.
+### =====================================================================================
+
+@api = http://localhost:5082
+
+### 1. Platform admin logs in (seeded on first start)
+# @name admin
+POST {{api}}/identity/login
+Content-Type: application/json
+
+{ "email": "admin@fooddelivery.local", "password": "Admin123!" }
+
+### 2. Admin onboards the restaurant (Q1: the PLATFORM does this by hand)
+# @name restaurant
+POST {{api}}/restaurants
+Authorization: Bearer {{admin.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "Mama's Kitchen", "address": "12 Long St, Cape Town", "deliveryFee": 20.00, "currency": "ZAR" }
+
+### 3. Admin creates a login for the restaurant's staff
+POST {{api}}/identity/restaurant-staff
+Authorization: Bearer {{admin.response.body.$.token}}
+Content-Type: application/json
+
+{ "restaurantId": "{{restaurant.response.body.$.restaurantId}}", "email": "staff@mamas.local", "password": "Staff123!", "displayName": "Mama" }
+
+### 4. Staff log in (their token carries their restaurant id)
+# @name staff
+POST {{api}}/identity/login
+Content-Type: application/json
+
+{ "email": "staff@mamas.local", "password": "Staff123!" }
+
+### 5. Staff build the menu and open
+# @name burger
+POST {{api}}/restaurants/mine/menu-items
+Authorization: Bearer {{staff.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "Burger", "description": "Beef, cheese, pickles", "price": 80.00 }
+
+###
+PUT {{api}}/restaurants/mine/open-status
+Authorization: Bearer {{staff.response.body.$.token}}
+Content-Type: application/json
+
+{ "isOpen": true }
+
+### 6. The restaurant onboards ITS driver (D7: drivers belong to restaurants)
+POST {{api}}/identity/drivers
+Authorization: Bearer {{staff.response.body.$.token}}
+Content-Type: application/json
+
+{ "email": "driver@mamas.local", "password": "Driver123!", "displayName": "Sipho" }
+
+### 7. A customer signs up (Customers module creates their profile via the CustomerRegistered event)
+# @name customer
+POST {{api}}/identity/register
+Content-Type: application/json
+
+{ "email": "thandi@example.com", "password": "Customer123!", "displayName": "Thandi" }
+
+### 8. Customer adds an address
+# @name address
+POST {{api}}/customers/me/addresses
+Authorization: Bearer {{customer.response.body.$.token}}
+Content-Type: application/json
+
+{ "line1": "5 Bree St", "city": "Cape Town", "postalCode": "8001", "isDefault": true }
+
+### 9. Browse and view the menu
+GET {{api}}/restaurants
+
+###
+GET {{api}}/restaurants/{{restaurant.response.body.$.restaurantId}}/menu
+
+### 10. Preview the basket total (server-side pricing)
+POST {{api}}/orders/quote
+Content-Type: application/json
+
+{ "restaurantId": "{{restaurant.response.body.$.restaurantId}}", "items": [ { "menuItemId": "{{burger.response.body.$.itemId}}", "quantity": 2 } ] }
+
+### 11. PLACE THE ORDER - Q3: send an Idempotency-Key (one per checkout). Returns 202 PaymentPending
+###     immediately; the WORKER authorises the payment. Send it twice: you get the SAME order back.
+# @name order
+POST {{api}}/orders
+Authorization: Bearer {{customer.response.body.$.token}}
+Content-Type: application/json
+Idempotency-Key: checkout-0001
+
+{
+  "restaurantId": "{{restaurant.response.body.$.restaurantId}}",
+  "addressId": "{{address.response.body.$.addressId}}",
+  "items": [ { "menuItemId": "{{burger.response.body.$.itemId}}", "quantity": 2 } ],
+  "paymentToken": "tok_visa"
+}
+
+### 11b. Poll until it says "Payment confirmed. Waiting for the restaurant."
+GET {{api}}/orders/{{order.response.body.$.orderId}}
+Authorization: Bearer {{customer.response.body.$.token}}
+
+### 12. Restaurant sees it, accepts (= capture payment), cooks, marks ready (= request a driver)
+GET {{api}}/orders/incoming
+Authorization: Bearer {{staff.response.body.$.token}}
+
+###
+POST {{api}}/orders/{{order.response.body.$.orderId}}/accept
+Authorization: Bearer {{staff.response.body.$.token}}
+
+###
+POST {{api}}/orders/{{order.response.body.$.orderId}}/preparing
+Authorization: Bearer {{staff.response.body.$.token}}
+
+###
+POST {{api}}/orders/{{order.response.body.$.orderId}}/ready
+Authorization: Bearer {{staff.response.body.$.token}}
+
+### 13. Driver logs in, starts a shift, sees the request, accepts it
+# @name driver
+POST {{api}}/identity/login
+Content-Type: application/json
+
+{ "email": "driver@mamas.local", "password": "Driver123!" }
+
+###
+POST {{api}}/delivery/shifts/start
+Authorization: Bearer {{driver.response.body.$.token}}
+
+###
+# @name requests
+GET {{api}}/delivery/requests
+Authorization: Bearer {{driver.response.body.$.token}}
+
+###
+POST {{api}}/delivery/{{requests.response.body.$[0].deliveryId}}/accept
+Authorization: Bearer {{driver.response.body.$.token}}
+
+### 14. Picked up -> delivered. Each publishes an EVENT that Ordering listens to.
+POST {{api}}/delivery/{{requests.response.body.$[0].deliveryId}}/picked-up
+Authorization: Bearer {{driver.response.body.$.token}}
+
+###
+POST {{api}}/delivery/{{requests.response.body.$[0].deliveryId}}/delivered
+Authorization: Bearer {{driver.response.body.$.token}}
+
+### 15. Customer tracks the order - "Delivered" (applied by the Worker a moment after step 14)
+GET {{api}}/orders/{{order.response.body.$.orderId}}
+Authorization: Bearer {{customer.response.body.$.token}}
+
+### 16. Business reporting (admin sees everything)
+GET {{api}}/reports/orders-revenue?from=2020-01-01&to=2030-12-31
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### =====================================================================================
+### Q2 ADDITIONS
+### =====================================================================================
+
+### 17. Cached browse with filters + paging (Redis, cache-aside)
+GET {{api}}/restaurants?search=Mama&openOnly=true&page=1&pageSize=20
+
+### 18. Self-service onboarding is behind a FEATURE FLAG - this returns 404 while it is off
+POST {{api}}/restaurants/applications
+Content-Type: application/json
+
+{ "name": "Sizwe's Grill", "address": "9 Bree St", "deliveryFee": 15, "contactEmail": "owner@sizwes.local" }
+
+### 19. Admin switches the flag ON (no deploy needed)
+PUT {{api}}/admin/feature-flags/self-service-onboarding?enabled=true
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### 20. Apply again - now accepted (status PENDING_APPROVAL)
+# @name application
+POST {{api}}/restaurants/applications
+Content-Type: application/json
+
+{ "name": "Sizwe's Grill", "address": "9 Bree St", "deliveryFee": 15, "contactEmail": "owner@sizwes.local" }
+
+### 21. Admin approves -> RestaurantApproved (outbox) -> Worker -> Identity creates the staff login
+POST {{api}}/restaurants/applications/{{application.response.body.$.applicationId}}/approve
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### 22. Pre-computed daily summary (read from the replica; built by the Worker)
+GET {{api}}/reports/daily-summary?from=2020-01-01&to=2030-12-31
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### =====================================================================================
+### Q3: SIMULATE FRIDAY NIGHT (the fake payment provider obeys these flags)
+### =====================================================================================
+
+### F1. The provider will charge the card but the reply will be LOST (our 10 s timeout fires)
+PUT {{api}}/admin/feature-flags/fake-provider-timeout-but-succeeds?enabled=true
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### F2. Place an order (use a NEW customer, or this one once its previous order is no longer pending).
+###     Watch the Worker: "no answer ... UNKNOWN", then ~12 s later the webhook, then AUTHORISED.
+###     Placing again with a new key meanwhile returns 409 "you already have an order being confirmed".
+
+### F3. Switch the simulation off
+PUT {{api}}/admin/feature-flags/fake-provider-timeout-but-succeeds?enabled=false
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### F4. Provider completely DOWN -> the circuit breaker opens (watch "CIRCUIT OPEN" in the Worker).
+###     Turn it back off and watch orders confirm by themselves (HALF-OPEN -> CLOSED, sweeper replays).
+PUT {{api}}/admin/feature-flags/fake-provider-down?enabled=true
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### F5. Support: what REALLY happened to an order and its money?
+GET {{api}}/support/orders/{{order.response.body.$.orderId}}/timeline
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### =====================================================================================
+### CHALLENGE: the acquired company (anti-corruption layer)
+### =====================================================================================
+
+### C1. Sync their catalogue now (the Worker also does it every minute)
+POST {{api}}/integration/partner/sync
+Authorization: Bearer {{admin.response.body.$.token}}
+
+### C2. Their restaurant, translated into OUR model (prices in rand, missing stock = unavailable)
+GET {{api}}/restaurants?search=Bob
+
+### C3. Order from it like any other restaurant (POST /orders with its restaurantId + an item id from its menu).
+###     Once paid, the Worker forwards it to THEIR system. Find their order number:
+###     SELECT * FROM partner_integration.forwarded_orders;
+
+### C4. Play THEIR restaurant: each call sends a signed webhook to us, which we translate.
+###     CONFIRMED -> Accepted (we capture) | COOKING -> Preparing | DISPATCHED -> OutForDelivery | DONE -> Delivered
+POST {{api}}/dev/partner/orders/B-1234/status?status=CONFIRMED

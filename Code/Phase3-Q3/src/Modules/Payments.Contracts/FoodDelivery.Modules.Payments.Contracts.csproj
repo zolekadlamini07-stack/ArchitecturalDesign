@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Q3 NEW: the PUBLIC CONTRACT of the Payments module, in its own tiny project.
+
+    WHY A SEPARATE PROJECT? In Q3, Ordering and Payments listen to EACH OTHER'S events:
+      Payments reacts to Ordering's OrderPlaced / OrderAccepted ...
+      Ordering reacts to Payments' PaymentAuthorised / PaymentDeclined ...
+    C# projects cannot reference each other in a circle. So Payments' public face (its events and
+    its interface) moves here. Ordering references THIS small project - never Payments' internals.
+    This is the standard modular-monolith pattern ("contracts" or "integration events" project),
+    and it would also be the exact contract if Payments were ever extracted as a service (D23).
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\FoodDelivery.BuildingBlocks.csproj" />
+  </ItemGroup>
+</Project>

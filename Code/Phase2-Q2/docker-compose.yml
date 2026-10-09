@@ -1,0 +1,19 @@
+# Q2 infrastructure - still small, every piece answers one Q2 problem:
+#   postgres : primary database (+ the outbox tables and the job queue - no message broker, D12)
+#   redis    : shared cache for browse/menu (D11, problem P1)
+# In production the read replica (D14) is a managed replica of postgres; locally the
+# "ReportingReplica" connection string simply points at the same database.
+# Ports 5434 / 6380 so this can run next to the Phase 1 stack.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: fooddelivery
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+  redis:
+    image: redis:7
+    ports:
+      - "6380:6379"

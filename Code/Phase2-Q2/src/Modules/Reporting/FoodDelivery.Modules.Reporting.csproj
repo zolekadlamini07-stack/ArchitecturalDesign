@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Reporting MODULE: one business capability with its own code, its own schema and its own public API.
+    Reporting OWNS NO DATA: it reads the other modules' schemas, read-only.
+    Everything in this project is 'internal' EXCEPT the PublicApi folder and the ReportingModule class.
+    That means the C# compiler itself stops other modules from using our internals (D3).
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\FoodDelivery.BuildingBlocks.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Reporting uses plain SQL (no EF Core): it only reads, and its queries are aggregates. -->
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+</Project>

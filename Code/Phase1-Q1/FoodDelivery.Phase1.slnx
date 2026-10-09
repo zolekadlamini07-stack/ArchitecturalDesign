@@ -1,0 +1,37 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/FoodDelivery.BuildingBlocks.csproj" />
+  </Folder>
+  <Folder Name="/src/Host/">
+    <Project Path="src/Host/FoodDelivery.Api/FoodDelivery.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Customers/">
+    <Project Path="src/Modules/Customers/FoodDelivery.Modules.Customers.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Delivery/">
+    <Project Path="src/Modules/Delivery/FoodDelivery.Modules.Delivery.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/">
+    <Project Path="src/Modules/Identity/FoodDelivery.Modules.Identity.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Notifications/">
+    <Project Path="src/Modules/Notifications/FoodDelivery.Modules.Notifications.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Ordering/">
+    <Project Path="src/Modules/Ordering/FoodDelivery.Modules.Ordering.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Payments/">
+    <Project Path="src/Modules/Payments/FoodDelivery.Modules.Payments.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Reporting/">
+    <Project Path="src/Modules/Reporting/FoodDelivery.Modules.Reporting.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Restaurants/">
+    <Project Path="src/Modules/Restaurants/FoodDelivery.Modules.Restaurants.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FoodDelivery.Tests/FoodDelivery.Tests.csproj" />
+  </Folder>
+</Solution>

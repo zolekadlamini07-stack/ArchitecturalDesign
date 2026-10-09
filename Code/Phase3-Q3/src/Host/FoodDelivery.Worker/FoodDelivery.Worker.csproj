@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <!--
+    Q2 NEW (D13): THE WORKER PROCESS.
+    It references the SAME modules as the Api. Same code, same release - just started with a
+    different command and run on its own instance. It serves no HTTP traffic; it only runs jobs.
+    Slow work here (sending notifications, nightly summaries) can never slow down a customer request.
+    This is NOT a microservice: no network API, no separate database, no separate codebase.
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\FoodDelivery.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\FoodDelivery.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\Customers\FoodDelivery.Modules.Customers.csproj" />
+    <ProjectReference Include="..\..\Modules\Restaurants\FoodDelivery.Modules.Restaurants.csproj" />
+    <ProjectReference Include="..\..\Modules\Ordering\FoodDelivery.Modules.Ordering.csproj" />
+    <ProjectReference Include="..\..\Modules\Payments\FoodDelivery.Modules.Payments.csproj" />
+    <ProjectReference Include="..\..\Modules\Delivery\FoodDelivery.Modules.Delivery.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\FoodDelivery.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\..\Modules\Reporting\FoodDelivery.Modules.Reporting.csproj" />
+    <!-- Q3 / challenge -->
+    <ProjectReference Include="..\..\Modules\Payments.Contracts\FoodDelivery.Modules.Payments.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\PartnerIntegration\FoodDelivery.Modules.PartnerIntegration.csproj" />
+  </ItemGroup>
+</Project>
